@@ -1,2 +1,2 @@
 # opendeur2026
-## Slangespel met 25 vakjes
+#### Slangespel met 25 vakjes

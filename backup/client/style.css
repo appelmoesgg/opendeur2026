@@ -1,0 +1,22 @@
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #111;
+  overflow: hidden;
+}
+
+/* centered square canvas */
+#game {
+  width: min(90vw, 90vh);
+  height: min(90vw, 90vh);
+
+  border: 2px solid white;
+  image-rendering: pixelated;
+}

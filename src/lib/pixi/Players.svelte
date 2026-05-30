@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Sprite } from 'svelte-pixi';
   import { Assets, Texture } from 'pixi.js';
-  import type { Player } from '$lib/game/Player.svelte';
+  import type { Player } from '$lib/game/Player';
 
   let { game } = $props();
 

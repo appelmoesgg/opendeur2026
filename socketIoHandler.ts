@@ -1,20 +1,55 @@
 import { Server } from 'socket.io';
+import { Game } from './src/lib/game/Game';
+
+let gameInstance: Game = new Game();
+let colors: string[] = ['red', 'blue', 'green', 'yellow'];
 
 export default function injectSocketIO(server: any) {
-    const io = new Server(server);
+	const io = new Server(server);
 
-    io.on('connection', (socket) => {
-        let username = `User ${Math.round(Math.random() * 999999)}`;
-        socket.emit('name', username);
+	io.on('connection', (socket) => {
 
-        socket.on('message', (message) => {
-            io.emit('message', {
-                from: username,
-                message: message,
-                time: new Date().toLocaleString()
+		socket.on('joinLobby', () => {
+			console.log('Client joined lobby:', socket.id);
+
+			gameInstance.addPlayer(
+				socket.id,
+				`Player${gameInstance.getPlayerCount()}`,
+				colors[gameInstance.getPlayerCount()]
+			);
+
+			io.emit('playerList', {
+				players: gameInstance.getPlayers()
+			});
+
+            if (gameInstance.getPlayerCount() >= 2) {
+                io.emit('gameStartCountdown')
+				setTimeout(() => {
+					io.emit('gameStart')
+				}, 30000);
+            }
+		});
+
+		socket.on('gameAvailable', () => {
+			io.emit('gameAvailable', {
+				available: true
+			});
+		});
+
+		socket.on('playerList', () => {
+			socket.emit('playerList', {
+				players: gameInstance.getPlayers()
+			});
+		});
+
+		socket.on('disconnect', () => {
+			gameInstance.removePlayer(socket.id);
+            io.emit('playerList', {
+                players: gameInstance.getPlayers()
             });
-        });
-    });
+			console.log('Client disconnected');
+		});
+	});
 
-    console.log('SocketIO injected');
+	console.log('SocketIO injected');
 }

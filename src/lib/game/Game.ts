@@ -1,9 +1,9 @@
 import { Board } from './Board.ts';
-import { Player } from './Player.svelte';
+import { Player } from './Player.ts';
 
 export class Game {
     board: Board;
-    players: Player[] = $state([]);
+    players: Player[] = [];
 
     constructor() {
         this.board = new Board(5, 5);
@@ -21,6 +21,14 @@ export class Game {
 
     getPlayer(id: string): Player | undefined {
         return this.players.find(player => player.id === id);
+    }
+
+    getPlayerCount(): number {
+        return this.players.length;
+    }
+
+    getPlayers(): Player[] {
+        return this.players;
     }
 
     updatePlayerPosition(id: string, position: number): void {

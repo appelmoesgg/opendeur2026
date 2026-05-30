@@ -2,7 +2,7 @@ export class Player {
     id: string;
     name: string;
     color: string;
-    position: number = $state(1);  // ← add $state
+    position: number;
 
     constructor(id: string, name: string, color: string, position: number = 1) {
         this.id = id;

@@ -1,35 +1,69 @@
 <script lang="ts">
-  import Board from './Board.svelte';
-  import Players from './Players.svelte';
-  import { onMount } from 'svelte';
-  import { Game } from '$lib/game/Game';
-  import { Application } from 'svelte-pixi';
-  import type { Socket } from 'socket.io-client';
+  import { onMount, onDestroy } from 'svelte';
+  import { Application as PixiApp, Sprite, Assets } from 'pixi.js';
+  import { Board } from '$lib/game/Board';
+  import type { Texture } from 'pixi.js';
 
-  let { io } = $props<{ io: Socket }>();
+  type PlayerData = { id: string; color: string; position: number };
 
-  let game: Game = $state(new Game());
+  let { players, textures }: { players: PlayerData[]; textures: Record<string, Texture> } = $props();
 
-  onMount(() => {
-    // Add some test players
-    game.addPlayer('1', 'Player 1', 'red', 1);
-    game.addPlayer('2', 'Player 2', 'blue', 1);
-    game.addPlayer('3', 'Player 3', 'yellow', 2);
-    game.addPlayer('4', 'Player 4', 'green', 3);
+  const board = new Board(5, 5);
+  let container: HTMLDivElement;
+  let app: PixiApp | null = null;
+  let appReady = $state(false);
+  const sprites = new Map<string, Sprite>();
 
-    /*setInterval(() => {
-      for (const player of game.players){
-        game.updatePlayerPosition(player.id, player.position + 1);
-        console.log(player)
-      }
-      
-      game.players = [...game.players];
-    }, 500)*/
+  onMount(async () => {
+    app = new PixiApp();
+    await app.init({ width: 600, height: 600, background: 0x111111 });
+    container.appendChild(app.canvas);
+
+    const bgTexture = await Assets.load('/background.png');
+    bgTexture.source.scaleMode = 'nearest';
+    const bg = new Sprite(bgTexture);
+    bg.width = 600;
+    bg.height = 600;
+    app.stage.addChild(bg);
+
+    appReady = true;
   });
 
+  $effect(() => {
+    if (!appReady || !app) return;
+
+    for (const player of players) {
+      const texture = textures[player.color];
+      if (!texture) continue;
+
+      if (!sprites.has(player.id)) {
+        const sprite = new Sprite(texture);
+        sprite.anchor.set(0.5);
+        sprite.scale.set(3);
+        app.stage.addChild(sprite);
+        sprites.set(player.id, sprite);
+      }
+
+      const sprite = sprites.get(player.id)!;
+      const offset = players.filter(p => p.position === player.position).indexOf(player);
+      const pos = board.getXY(player.position, offset);
+      sprite.x = pos.x;
+      sprite.y = pos.y;
+    }
+
+    const playerIds = new Set(players.map(p => p.id));
+    for (const [id, sprite] of [...sprites.entries()]) {
+      if (!playerIds.has(id)) {
+        app.stage.removeChild(sprite);
+        sprite.destroy();
+        sprites.delete(id);
+      }
+    }
+  });
+
+  onDestroy(() => {
+    app?.destroy(true);
+  });
 </script>
 
-<Application width={600} height={600}>
-  <Board />
-  <Players {game} />
-</Application>
+<div bind:this={container}></div>

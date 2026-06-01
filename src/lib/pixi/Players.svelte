@@ -1,50 +1,51 @@
 <script lang="ts">
-  import { Sprite } from 'svelte-pixi';
-  import { Assets, Texture } from 'pixi.js';
+  import { getContext, onDestroy } from 'svelte';
+  import { Sprite as PixiSprite } from 'pixi.js';
+  import type { Container, Texture } from 'pixi.js';
   import type { Player } from '$lib/game/Player';
 
-  let { game } = $props();
+  let { game, textures } = $props<{ game: any; textures: Record<string, Texture> }>();
 
-  const players = $derived(game.players);
-
-  const drawQueue = $derived.by(() => {
-    const queue: Record<number, Player[]> = {};
-    for (const player of players) {
-      if (!queue[player.position]) queue[player.position] = [];
-      queue[player.position].push(player);
-    }
-    return queue;
-  });
-
-  const drawCells = $derived(Object.keys(drawQueue).map(Number));
-
-  let textures = $state<Record<string, Texture>>({});
+  const { container } = getContext<{ container: Container }>('pixi/container');
+  const sprites = new Map<string, PixiSprite>();
 
   $effect(() => {
-    loadTextures();
-  });
+    const players = game.players as Player[];
 
-  async function loadTextures() {
     for (const player of players) {
-      if (!textures[player.color]) {
-        const texture = await Assets.load(`/${player.color}pion.png`);
-        texture.source.scaleMode = 'nearest';
-        textures[player.color] = texture;
+      const texture = textures[player.color];
+      if (!texture) continue;
+
+      if (!sprites.has(player.id)) {
+        const sprite = new PixiSprite(texture);
+        sprite.anchor.set(0.5);
+        sprite.scale.set(3);
+        container.addChild(sprite);
+        sprites.set(player.id, sprite);
+      }
+
+      const sprite = sprites.get(player.id)!;
+      const offset = players.filter(p => p.position === player.position).indexOf(player);
+      const pos = game.board.getXY(player.position, offset);
+      sprite.x = pos.x;
+      sprite.y = pos.y;
+    }
+
+    const playerIds = new Set(players.map(p => p.id));
+    for (const [id, sprite] of [...sprites.entries()]) {
+      if (!playerIds.has(id)) {
+        container.removeChild(sprite);
+        sprite.destroy();
+        sprites.delete(id);
       }
     }
-  }
-</script>
+  });
 
-{#each drawCells as cellNr}
-  {#each drawQueue[cellNr] as player, i}
-    {#if textures[player.color]}
-      <Sprite
-        texture={textures[player.color]}
-        x={game.board.getXY(player.position, i).x}
-        y={game.board.getXY(player.position, i).y}
-        anchor={0.5}
-        scale={3}
-      />
-    {/if}
-  {/each}
-{/each}
+  onDestroy(() => {
+    for (const sprite of sprites.values()) {
+      container?.removeChild(sprite);
+      sprite.destroy();
+    }
+    sprites.clear();
+  });
+</script>

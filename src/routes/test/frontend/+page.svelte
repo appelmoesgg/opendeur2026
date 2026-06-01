@@ -1,18 +1,34 @@
 <script lang="ts">
-  import Scene from '$lib/pixi/Scene.svelte';
   import { onMount } from 'svelte';
   import { io } from '$lib/webSocketConnection.js';
+
+  let coolText: string = $state("");
 
   function sendToLobby() {
     window.location.href = '/test/frontend/lobby';
   }
 
+  function retryGameAvailable() {
+    let secs = 5;
+    let intervalID = setInterval(() => {
+      coolText = "No game available... retrying in " + secs + " seconds";
+      secs--;
+
+      if (secs < 0) {
+        clearInterval(intervalID);
+        io.emit("gameAvailable");
+      }
+
+
+    }, 1000);
+  }
+
   onMount(() => {
       io.on('gameAvailable', (data: { available: boolean}) => {
         if (data.available) {
-          //sendToLobby();
+          sendToLobby();
         } else {
-          alert("No game free... try again later");
+          retryGameAvailable();
         }
       });
       
@@ -28,7 +44,4 @@
   });
 </script>
 
-<div class="flex flex-col h-full w-full items-center justify-center">
-  <img src="/title.png" alt="logo" style="image-rendering:pixelated;" class="mb-4" width="570" height="290">
-  <Scene {io} />
-</div>
+<p class="text-2xl font-bold text-center text-white">{coolText}</p>

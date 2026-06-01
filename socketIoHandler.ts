@@ -8,7 +8,6 @@ export default function injectSocketIO(server: any) {
 	const io = new Server(server);
 
 	io.on('connection', (socket) => {
-
 		socket.on('joinLobby', () => {
 			console.log('Client joined lobby:', socket.id);
 
@@ -22,18 +21,36 @@ export default function injectSocketIO(server: any) {
 				players: gameInstance.getPlayers()
 			});
 
-            if (gameInstance.getPlayerCount() >= 2) {
-                io.emit('gameStartCountdown')
+			if (gameInstance.getPlayerCount() >= 2) {
+				io.emit('gameStartCountdown');
 				setTimeout(() => {
-					io.emit('gameStart')
+					io.emit('gameStart');
+					gameInstance.active = true;
 				}, 30000);
-            }
+			}
 		});
 
 		socket.on('gameAvailable', () => {
 			io.emit('gameAvailable', {
-				available: true
+				available: !gameInstance.active
 			});
+		});
+
+		socket.on('gameAllowed', () => {
+			const player = gameInstance.getPlayer(socket.id);
+			io.emit('gameAllowed', {
+				allowed: !!player
+			});
+		});
+
+		socket.on('requestGameData', () => {
+			const player = gameInstance.getPlayer(socket.id);
+			if (player) {
+				socket.emit('gameData', {
+					board: gameInstance.board,
+					players: gameInstance.getPlayers()
+				});
+			}
 		});
 
 		socket.on('playerList', () => {
@@ -44,9 +61,9 @@ export default function injectSocketIO(server: any) {
 
 		socket.on('disconnect', () => {
 			gameInstance.removePlayer(socket.id);
-            io.emit('playerList', {
-                players: gameInstance.getPlayers()
-            });
+			io.emit('playerList', {
+				players: gameInstance.getPlayers()
+			});
 			console.log('Client disconnected');
 		});
 	});

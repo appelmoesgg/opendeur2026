@@ -20,6 +20,13 @@
         io.emit('playerList');
     };
 
+    const onLobbyJoinCB = (data: { success: boolean, reason: string }) => {
+        if (!data.success) {
+            alert(data.reason);
+            window.location.href = '/test/frontend';
+        }
+    };
+
     const onPlayerList = (data: { players: Player[] }) => {
         players = data.players;
     };

@@ -4,6 +4,7 @@ import { Player } from './Player.ts';
 export class Game {
     board: Board;
     players: Player[] = [];
+    active: boolean = false;
 
     constructor() {
         this.board = new Board(5, 5);

@@ -7,51 +7,59 @@
   let players: Player[] = $state([]);
   let startCountdown: number = $state(Infinity);
 
+  // The CSS color 'yellow' is almost invisible on a dark background, so we swap it
   function cssColor(color: string): string {
     return color === 'yellow' ? '#facc15' : color;
   }
 
   onMount(() => {
-    const onConnect = () => {
+    function onConnect() {
       io.emit('joinLobby');
       io.emit('playerList');
-    };
+    }
 
-    const onPlayerList = (data: { players: Player[] }) => {
+    function onPlayerList(data: { players: Player[] }) {
       players = data.players;
-    };
+    }
 
-    const onGameStartCountDown = () => {
-      startCountdown = 10;
+    function onGameStartCountdown(data?: { remaining: number }) {
+      // Use the remaining time from the server so late joiners see the correct number
+      startCountdown = data?.remaining ?? 10;
       const interval = setInterval(() => {
         startCountdown--;
         if (startCountdown <= 0) clearInterval(interval);
       }, 1000);
-    };
+    }
 
-    const onGameStart = () => goto('/test/frontend/game');
+    function onGameStart() {
+      goto('/game');
+    }
 
     io.on('connect', onConnect);
+    // If the socket is already connected when the page loads (SPA navigation),
+    // the 'connect' event won't fire again, so we call onConnect manually
     if (io.connected) onConnect();
+
     io.on('playerList', onPlayerList);
-    io.on('gameStartCountdown', onGameStartCountDown);
+    io.on('gameStartCountdown', onGameStartCountdown);
     io.on('gameStart', onGameStart);
 
     return () => {
       io.off('connect', onConnect);
       io.off('playerList', onPlayerList);
-      io.off('gameStartCountdown', onGameStartCountDown);
+      io.off('gameStartCountdown', onGameStartCountdown);
       io.off('gameStart', onGameStart);
     };
   });
 </script>
 
-<div class="flex flex-col items-center justify-center h-full w-full gap-6">
+<div class="page">
   <img src="/title.png" alt="Slangen en Ladders" width="285" height="145" />
 
   <div class="pixel-panel flex flex-col gap-3" style="min-width:240px;">
     <p class="text-[8px] text-gray-400 mb-1">PLAYERS</p>
 
+    <!-- Always show 4 slots; empty ones are grayed out -->
     {#each Array(4) as _, i}
       {#if players[i]}
         <div class="flex items-center gap-3">

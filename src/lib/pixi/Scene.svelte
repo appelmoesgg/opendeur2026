@@ -11,13 +11,21 @@
   const board = new Board(5, 5);
   let container: HTMLDivElement;
   let app: PixiApp | null = null;
+
+  // We can't place sprites on the canvas before it's ready, so we use this flag
   let appReady = $state(false);
+
+  // One Pixi sprite per player, looked up by player id
   const sprites = new Map<string, Sprite>();
 
   onMount(async () => {
     app = new PixiApp();
     await app.init({ width: 600, height: 600, background: 0x111111 });
     container.appendChild(app.canvas);
+
+    // Let CSS control the display size — internal resolution stays at 600×600
+    app.canvas.style.width = '100%';
+    app.canvas.style.height = '100%';
 
     const bgTexture = await Assets.load('/background.png');
     bgTexture.source.scaleMode = 'nearest';
@@ -29,9 +37,11 @@
     appReady = true;
   });
 
+  // This block runs every time `players` or `textures` changes
   $effect(() => {
     if (!appReady || !app) return;
 
+    // Move (or create) a sprite for each player
     for (const player of players) {
       const texture = textures[player.color];
       if (!texture) continue;
@@ -45,13 +55,17 @@
       }
 
       const sprite = sprites.get(player.id)!;
-      const offset = players.filter(p => p.position === player.position).indexOf(player);
+
+      // When multiple players are on the same square, offset them sideways
+      const playersOnSameSquare = players.filter((p) => p.position === player.position);
+      const offset = playersOnSameSquare.indexOf(player);
       const pos = board.getXY(player.position, offset);
       sprite.x = pos.x;
       sprite.y = pos.y;
     }
 
-    const playerIds = new Set(players.map(p => p.id));
+    // Remove sprites for players who have left the game
+    const playerIds = new Set(players.map((p) => p.id));
     for (const [id, sprite] of [...sprites.entries()]) {
       if (!playerIds.has(id)) {
         app.stage.removeChild(sprite);

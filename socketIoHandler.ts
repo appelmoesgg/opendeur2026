@@ -4,6 +4,7 @@ import { Game } from './src/lib/game/Game';
 let gameInstance: Game = new Game();
 let colors: string[] = ['red', 'blue', 'green', 'yellow'];
 let countdownStarted: boolean = false;
+let countdownStartedAt: number | null = null;
 
 export default function injectSocketIO(server: any) {
 	const io = new Server(server);
@@ -36,11 +37,16 @@ export default function injectSocketIO(server: any) {
 
 			if (gameInstance.getPlayerCount() >= 2 && !countdownStarted) {
 				countdownStarted = true;
-				io.emit('gameStartCountdown');
+				countdownStartedAt = Date.now();
+				io.emit('gameStartCountdown', { remaining: 10 });
 				setTimeout(() => {
 					io.emit('gameStart');
 					gameInstance.active = true;
+					countdownStartedAt = null;
 				}, 10000);
+			} else if (countdownStarted && countdownStartedAt !== null) {
+				const elapsed = Math.floor((Date.now() - countdownStartedAt) / 1000);
+				socket.emit('gameStartCountdown', { remaining: Math.max(1, 10 - elapsed) });
 			}
 		});
 
@@ -92,9 +98,12 @@ export default function injectSocketIO(server: any) {
 			gameInstance.updatePlayerPosition(socket.id, newPos);
 
 			if (newPos >= 25) {
+				// Broadcast the final position first so the sprite moves to square 25 on every client
+				broadcastGameState(dice, socket.id, specialSquare);
 				io.emit('gameOver', { winnerId: socket.id, winnerName: currentPlayer.name });
 				gameInstance = new Game();
 				countdownStarted = false;
+				countdownStartedAt = null;
 				return;
 			}
 
@@ -112,6 +121,7 @@ export default function injectSocketIO(server: any) {
 			if (gameInstance.getPlayerCount() === 0) {
 				gameInstance = new Game();
 				countdownStarted = false;
+				countdownStartedAt = null;
 				return;
 			}
 

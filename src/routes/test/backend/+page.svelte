@@ -1,1 +1,0 @@
-// check ../../+page.svelte voor voorbeeld

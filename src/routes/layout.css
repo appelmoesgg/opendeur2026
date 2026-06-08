@@ -20,6 +20,41 @@ img, canvas {
   animation: blink 1s step-end infinite;
 }
 
+/* Centred full-screen column — used as the root wrapper on every page */
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  gap: 24px;
+}
+
+/* Sidebar used on the game page */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  gap: 16px;
+  min-width: 148px;
+  color: white;
+}
+
+/* On mobile the sidebar sits below the board and flows horizontally */
+@media (max-width: 767px) {
+  .sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    align-self: auto;
+    width: 95vw;
+    min-width: unset;
+  }
+}
+
 /* Pixel-art panel: hard border, no radius */
 .pixel-panel {
   background: #191919;

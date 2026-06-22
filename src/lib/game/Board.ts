@@ -1,5 +1,5 @@
-// from → to: positive = ladder (go up), negative = snake (go down)
-const SPECIAL_SQUARES: Record<number, number> = {
+// 1e getal = van, 2e getal = naar
+const slangLadderPosities: Record<number, number> = {
     6: 15,
     11: 20,
     22: 14,
@@ -7,8 +7,8 @@ const SPECIAL_SQUARES: Record<number, number> = {
 };
 
 export class Board {
-    private width: number;
-    private height: number;
+    width: number;
+    height: number;
 
     constructor(width: number = 5, height: number = 5) {
         this.width = width;
@@ -28,11 +28,11 @@ export class Board {
         };
     }
 
-    isValidPosition(position: number): boolean {
+    isGeldigePositie(position: number): boolean {
         return position >= 1 && position <= (this.width * this.height);
     }
 
-    getSpecialSquare(position: number): number | undefined {
-        return SPECIAL_SQUARES[position];
+    isSlangLadder(position: number): number | undefined {
+        return slangLadderPosities[position];
     }
 }

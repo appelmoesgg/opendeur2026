@@ -6,46 +6,48 @@
 
   let { game, textures } = $props<{ game: any; textures: Record<string, Texture> }>();
 
-  const { container } = getContext<{ container: Container }>('pixi/container');
-  const sprites = new Map<string, PixiSprite>();
+  const { spelbord } = getContext<{ spelbord: Container }>('pixi/container');
+  // string: playerid, PixiSprite: tekeningetje van de speler
+  const spelerSprites = new Map<string, PixiSprite>();
 
   $effect(() => {
-    const players = game.players as Player[];
+    const players: Player[] = game.players;
 
     for (const player of players) {
       const texture = textures[player.color];
       if (!texture) continue;
 
-      if (!sprites.has(player.id)) {
+      if (!spelerSprites.has(player.id)) {
         const sprite = new PixiSprite(texture);
         sprite.anchor.set(0.5);
         sprite.scale.set(3);
-        container.addChild(sprite);
-        sprites.set(player.id, sprite);
+        spelbord.addChild(sprite);
+        spelerSprites.set(player.id, sprite);
       }
 
-      const sprite = sprites.get(player.id)!;
+      const sprite = spelerSprites.get(player.id)!;
+      // offset gebaseerd op aantal spelers op et vakje, anders worden ze over elkaar getekend
       const offset = players.filter(p => p.position === player.position).indexOf(player);
-      const pos = game.board.getXY(player.position, offset);
-      sprite.x = pos.x;
-      sprite.y = pos.y;
+      const positie = game.board.getXY(player.position, offset);
+      sprite.x = positie.x;
+      sprite.y = positie.y;
     }
 
     const playerIds = new Set(players.map(p => p.id));
-    for (const [id, sprite] of [...sprites.entries()]) {
+    for (const [id, sprite] of [...spelerSprites.entries()]) {
       if (!playerIds.has(id)) {
-        container.removeChild(sprite);
+        spelbord.removeChild(sprite);
         sprite.destroy();
-        sprites.delete(id);
+        spelerSprites.delete(id);
       }
     }
   });
 
   onDestroy(() => {
-    for (const sprite of sprites.values()) {
-      container?.removeChild(sprite);
+    for (const sprite of spelerSprites.values()) {
+      spelbord?.removeChild(sprite);
       sprite.destroy();
     }
-    sprites.clear();
+    spelerSprites.clear();
   });
 </script>

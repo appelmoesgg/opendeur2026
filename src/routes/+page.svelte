@@ -4,21 +4,21 @@
   import { io } from '$lib/webSocketConnection.js';
 
   let status = $state('SEARCHING...');
-  let retrying = $state(false);
-  let retryIn = $state(0);
+  let zoeken = $state(false);
+  let volgendePoging = $state(0);
 
   function sendToLobby() {
     goto('/lobby');
   }
 
-  function retryGameAvailable() {
-    retrying = true;
-    retryIn = 5;
+  function zoekGame() {
+    zoeken = true;
+    volgendePoging = 5;
     const intervalID = setInterval(() => {
-      retryIn--;
-      if (retryIn <= 0) {
+      volgendePoging--;
+      if (volgendePoging <= 0) {
         clearInterval(intervalID);
-        retrying = false;
+        zoeken = false;
         status = 'SEARCHING...';
         io.emit('gameAvailable');
       }
@@ -30,8 +30,8 @@
       if (data.available) {
         sendToLobby();
       } else {
-        status = 'NO GAME FOUND';
-        retryGameAvailable();
+        status = 'GEEN SPEL VRIJ';
+        zoekGame();
       }
     });
 
@@ -41,7 +41,7 @@
 
     io.emit('gameAvailable');
 
-    // Return a cleanup function — Svelte calls this when you leave the page
+    // disconnect alles
     return () => {
       io.off('gameAvailable');
       io.off('connect');
@@ -53,9 +53,9 @@
   <img src="/title.png" alt="Slangen en Ladders" width="285" height="145" />
 
   <div class="pixel-panel text-center" style="min-width: 260px;">
-    <p class="text-[10px] text-white leading-loose {retrying ? '' : 'blink'}">{status}</p>
-    {#if retrying}
-      <p class="text-[8px] text-gray-400 mt-4 leading-loose">RETRY IN {retryIn}...</p>
+    <p class="text-[10px] text-white leading-loose {zoeken ? '' : 'blink'}">{status}</p>
+    {#if zoeken}
+      <p class="text-[8px] text-gray-400 mt-4 leading-loose">RETRY IN {volgendePoging}...</p>
     {/if}
   </div>
 </div>

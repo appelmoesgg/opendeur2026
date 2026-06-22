@@ -1,93 +1,96 @@
 import { Server } from 'socket.io';
 import { Game } from './src/lib/game/Game';
 
-let gameInstance: Game = new Game();
+let game: Game = new Game();
 let colors: string[] = ['red', 'blue', 'green', 'yellow'];
-let countdownStarted: boolean = false;
-let countdownStartedAt: number | null = null;
+let countdownGestart: boolean = false;
+let countdownStartTijd: number | null = null;
 
 export default function injectSocketIO(server: any) {
 	const io = new Server(server);
 
 	function broadcastGameState(
-		lastRoll: number | null,
-		lastRollPlayerId: string | null,
-		specialSquare: { from: number; to: number; type: 'snake' | 'ladder' } | null
+		laatsteRol: number | null,
+		laatsteRolPlayerId: string | null,
+		speciaalVakje: { from: number; to: number; type: 'snake' | 'ladder' } | null
 	) {
 		io.emit('gameStateUpdate', {
-			players: gameInstance.getPlayers(),
-			currentTurnId: gameInstance.getCurrentTurn()?.id ?? null,
-			lastRoll,
-			lastRollPlayerId,
-			specialSquare
+			players: game.getPlayers(),
+			currentTurnId: game.huidigeBeurt()?.id ?? null,
+			laatsteRol,
+			laatsteRolPlayerId,
+			speciaalVakje
 		});
 	}
 
 	io.on('connection', (socket) => {
 		socket.on('joinLobby', () => {
-			if (gameInstance.active) return;
-			if (gameInstance.getPlayerCount() >= 4) return;
+			if (game.actief) return;
+			if (game.getPlayerCount() >= 4) return;
 
-			console.log('Client joined lobby:', socket.id);
+			console.log('Speler joined:', socket.id);
 
-			const count = gameInstance.getPlayerCount();
-			gameInstance.addPlayer(socket.id, `Player ${count + 1}`, colors[count]);
+			const count = game.getPlayerCount();
+			game.addPlayer(socket.id, `Player ${count + 1}`, colors[count]);
 
-			io.emit('playerList', { players: gameInstance.getPlayers() });
+			io.emit('playerList', { players: game.getPlayers() });
 
-			if (gameInstance.getPlayerCount() >= 2 && !countdownStarted) {
-				countdownStarted = true;
-				countdownStartedAt = Date.now();
-				io.emit('gameStartCountdown', { remaining: 10 });
+			if (game.getPlayerCount() >= 2 && !countdownGestart) {
+				countdownGestart = true;
+				countdownStartTijd = Date.now();
+
+				io.emit('gameStartCountdown', { resterend: 10 });
+
 				setTimeout(() => {
 					io.emit('gameStart');
-					gameInstance.active = true;
-					countdownStartedAt = null;
+					game.actief = true;
+					countdownStartTijd = null;
 				}, 10000);
-			} else if (countdownStarted && countdownStartedAt !== null) {
-				const elapsed = Math.floor((Date.now() - countdownStartedAt) / 1000);
-				socket.emit('gameStartCountdown', { remaining: Math.max(1, 10 - elapsed) });
+
+			} else if (countdownGestart && countdownStartTijd !== null) {
+				const verlopen = Math.floor((Date.now() - countdownStartTijd) / 1000);
+				socket.emit('gameStartCountdown', { resterend: Math.max(1, 10 - verlopen) });
 			}
 		});
 
 		socket.on('gameAvailable', () => {
 			socket.emit('gameAvailable', {
-				available: !gameInstance.active && gameInstance.getPlayerCount() < 4
+				available: !game.actief && game.getPlayerCount() < 4
 			});
 		});
 
 		socket.on('gameAllowed', () => {
-			const player = gameInstance.getPlayer(socket.id);
+			const player = game.getPlayer(socket.id);
 			socket.emit('gameAllowed', { allowed: !!player });
 		});
 
 		socket.on('requestGameData', () => {
-			const player = gameInstance.getPlayer(socket.id);
+			const player = game.getPlayer(socket.id);
 			if (player) {
 				socket.emit('gameData', {
-					players: gameInstance.getPlayers(),
-					currentTurnId: gameInstance.getCurrentTurn()?.id ?? null,
+					players: game.getPlayers(),
+					currentTurnId: game.huidigeBeurt()?.id ?? null,
 					myId: socket.id
 				});
 			}
 		});
 
 		socket.on('playerList', () => {
-			socket.emit('playerList', { players: gameInstance.getPlayers() });
+			socket.emit('playerList', { players: game.getPlayers() });
 		});
 
-		socket.on('rollDice', () => {
-			if (!gameInstance.active) return;
-			const currentPlayer = gameInstance.getCurrentTurn();
+		socket.on('rollDobbelsteen', () => {
+			if (!game.actief) return;
+			const currentPlayer = game.huidigeBeurt();
 			if (!currentPlayer || currentPlayer.id !== socket.id) return;
 
 			const dice = Math.floor(Math.random() * 6) + 1;
 			let newPos = Math.min(currentPlayer.position + dice, 25);
 
-			let specialSquare: { from: number; to: number; type: 'snake' | 'ladder' } | null = null;
-			const teleport = gameInstance.board.getSpecialSquare(newPos);
+			let speciaalVakje: { from: number; to: number; type: 'snake' | 'ladder' } | null = null;
+			const teleport = game.board.isSlangLadder(newPos);
 			if (teleport !== undefined) {
-				specialSquare = {
+				speciaalVakje = {
 					from: newPos,
 					to: teleport,
 					type: teleport > newPos ? 'ladder' : 'snake'
@@ -95,39 +98,39 @@ export default function injectSocketIO(server: any) {
 				newPos = teleport;
 			}
 
-			gameInstance.updatePlayerPosition(socket.id, newPos);
+			game.updatePlayerPosition(socket.id, newPos);
 
 			if (newPos >= 25) {
-				// Broadcast the final position first so the sprite moves to square 25 on every client
-				broadcastGameState(dice, socket.id, specialSquare);
+				// Stuur winnaar naar iedereen om naam te tonen en hem naar eindvakje te verplaatsen
+				broadcastGameState(dice, socket.id, speciaalVakje);
 				io.emit('gameOver', { winnerId: socket.id, winnerName: currentPlayer.name });
-				gameInstance = new Game();
-				countdownStarted = false;
-				countdownStartedAt = null;
+				game = new Game();
+				countdownGestart = false;
+				countdownStartTijd = null;
 				return;
 			}
 
-			gameInstance.nextTurn();
-			broadcastGameState(dice, socket.id, specialSquare);
+			game.volgendeBeurt();
+			broadcastGameState(dice, socket.id, speciaalVakje);
 		});
 
 		socket.on('disconnect', () => {
-			const wasCurrentTurn = gameInstance.getCurrentTurn()?.id === socket.id;
-			const wasActive = gameInstance.active;
+			const wasHuidigeBeurt = game.huidigeBeurt()?.id === socket.id;
+			const wasActief = game.actief;
 
-			gameInstance.removePlayer(socket.id);
-			console.log('Client disconnected');
+			game.removePlayer(socket.id);
+			console.log('Speler disconnect');
 
-			if (gameInstance.getPlayerCount() === 0) {
-				gameInstance = new Game();
-				countdownStarted = false;
-				countdownStartedAt = null;
+			if (game.getPlayerCount() === 0) {
+				game = new Game();
+				countdownGestart = false;
+				countdownStartTijd = null;
 				return;
 			}
 
-			io.emit('playerList', { players: gameInstance.getPlayers() });
+			io.emit('playerList', { players: game.getPlayers() });
 
-			if (wasActive && wasCurrentTurn) {
+			if (wasActief && wasHuidigeBeurt) {
 				broadcastGameState(null, null, null);
 			}
 		});

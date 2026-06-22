@@ -4,8 +4,8 @@ import { Player } from './Player.ts';
 export class Game {
     board: Board;
     players: Player[] = [];
-    active: boolean = false;
-    currentTurnIndex: number = 0;
+    actief: boolean = false;
+    actieveSpeler: number = 0;
 
     constructor() {
         this.board = new Board(5, 5);
@@ -21,10 +21,10 @@ export class Game {
         const index = this.players.findIndex(p => p.id === id);
         if (index === -1) return;
         this.players = this.players.filter(player => player.id !== id);
-        if (index < this.currentTurnIndex) {
-            this.currentTurnIndex--;
-        } else if (this.currentTurnIndex >= this.players.length && this.players.length > 0) {
-            this.currentTurnIndex = 0;
+        if (index < this.actieveSpeler) {
+            this.actieveSpeler--;
+        } else if (this.actieveSpeler >= this.players.length && this.players.length > 0) {
+            this.actieveSpeler = 0;
         }
     }
 
@@ -40,19 +40,19 @@ export class Game {
         return this.players;
     }
 
-    getCurrentTurn(): Player | undefined {
+    huidigeBeurt(): Player | undefined {
         if (this.players.length === 0) return undefined;
-        return this.players[this.currentTurnIndex];
+        return this.players[this.actieveSpeler];
     }
 
-    nextTurn(): void {
+    volgendeBeurt(): void {
         if (this.players.length === 0) return;
-        this.currentTurnIndex = (this.currentTurnIndex + 1) % this.players.length;
+        this.actieveSpeler = (this.actieveSpeler + 1) % this.players.length;
     }
 
     updatePlayerPosition(id: string, position: number): void {
         const player = this.getPlayer(id);
-        if (player && this.board.isValidPosition(position)) {
+        if (player && this.board.isGeldigePositie(position)) {
             player.moveTo(position);
         }
     }
